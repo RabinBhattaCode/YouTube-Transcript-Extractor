@@ -1,0 +1,2410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>YouTube Extractor</title>
+  <link rel="icon" type="image/svg+xml" href="/static/favicon.svg" />
+  <meta name="theme-color" content="#ff0000" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f0f0f;
+      --surface: #1a1a1a;
+      --surface2: #242424;
+      --border: #2e2e2e;
+      --red: #ff0000;
+      --red-dim: #cc0000;
+      --text: #e8e8e8;
+      --text-dim: #888;
+      --success: #4caf50;
+      --warning: #ff9800;
+      --error: #f44336;
+      --info: #2196f3;
+      --radius: 12px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 88px 16px 80px;
+    }
+
+    .top-nav {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 20;
+      background: rgba(15, 15, 15, 0.94);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+    }
+    .top-nav-inner {
+      width: 100%;
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 12px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+    .nav-brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      white-space: nowrap;
+    }
+    .nav-brand-mark {
+      width: 26px;
+      height: 26px;
+      border-radius: 7px;
+      background: #fff;
+      color: var(--red);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .nav-brand-mark svg {
+      width: 15px;
+      height: 15px;
+      fill: currentColor;
+    }
+    .nav-tabs {
+      display: inline-flex;
+      gap: 6px;
+      padding: 4px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface);
+    }
+    .nav-tab {
+      border: 0;
+      border-radius: 7px;
+      padding: 8px 12px;
+      background: transparent;
+      color: var(--text-dim);
+      font-size: 0.86rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .nav-tab:hover { color: var(--text); }
+    .nav-tab.active {
+      background: var(--red);
+      color: #fff;
+    }
+    .app-view {
+      display: none;
+      width: 100%;
+      flex-direction: column;
+      align-items: center;
+    }
+    .app-view.active-view { display: flex; }
+
+    /* ── Header ── */
+    header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .logo-icon {
+      width: 40px; height: 40px;
+      background: #fff;
+      border: 1px solid rgba(255, 0, 0, 0.16);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--red);
+    }
+    .logo-icon svg { width: 22px; height: 22px; fill: currentColor; }
+    h1 { font-size: 1.7rem; font-weight: 700; }
+    header p { color: var(--text-dim); margin-top: 6px; font-size: 0.95rem; }
+
+    /* ── Status card ── */
+    .status-card {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .status-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .status-block {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .status-label {
+      font-size: 0.72rem;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+    }
+    .status-value {
+      font-size: 1.05rem;
+      font-weight: 600;
+    }
+    .status-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .status-meta {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+      font-size: 0.9rem;
+    }
+    .status-flag {
+      font-size: 1.1rem;
+      line-height: 1;
+    }
+    .status-hint {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      width: 100%;
+      max-width: 680px;
+      margin-bottom: 20px;
+    }
+
+    /* ── Mode selector ── */
+    .mode-group {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 22px;
+      flex-wrap: wrap;
+    }
+    .mode-btn {
+      flex: 1;
+      min-width: 100px;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface2);
+      color: var(--text-dim);
+      cursor: pointer;
+      font-size: 0.88rem;
+      font-weight: 500;
+      transition: all .2s;
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+    }
+    .mode-btn .icon { font-size: 1.3rem; }
+    .mode-btn:hover { border-color: var(--red); color: var(--text); }
+    .mode-btn.active {
+      border-color: var(--red);
+      background: rgba(255,0,0,.08);
+      color: var(--text);
+    }
+
+    /* ── Input ── */
+    label { display: block; font-size: 0.85rem; color: var(--text-dim); margin-bottom: 8px; }
+    .input-row {
+      display: flex; gap: 10px;
+    }
+    input[type="text"],
+    input[type="file"],
+    textarea {
+      flex: 1;
+      padding: 12px 16px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color .2s;
+    }
+    textarea {
+      width: 100%;
+      min-height: 120px;
+      resize: vertical;
+      line-height: 1.5;
+    }
+    input[type="text"]:focus,
+    input[type="file"]:focus,
+    textarea:focus { border-color: var(--red); }
+    input[type="text"]::placeholder,
+    textarea::placeholder { color: var(--text-dim); }
+    .combo-input {
+      display: none;
+    }
+    .combo-input-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 10px;
+    }
+
+    button.primary {
+      padding: 12px 22px;
+      border: none;
+      border-radius: 8px;
+      background: var(--red);
+      color: white;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .2s;
+      white-space: nowrap;
+    }
+    button.primary:hover { background: var(--red-dim); }
+    button.primary:disabled { background: #555; cursor: not-allowed; }
+
+    /* ── Hint ── */
+    .hint {
+      margin-top: 10px;
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      padding: 8px 12px;
+      background: var(--surface2);
+      border-radius: 6px;
+      border-left: 3px solid var(--border);
+    }
+    .scope-row {
+      display: none;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+    .option-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 12px;
+    }
+    .scope-row label {
+      margin-bottom: 0;
+      white-space: nowrap;
+    }
+    .scope-row select,
+    .option-row select {
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 0.9rem;
+      outline: none;
+    }
+    .scope-row select:focus,
+    .option-row select:focus { border-color: var(--red); }
+    .scope-helper {
+      font-size: 0.78rem;
+      color: var(--text-dim);
+    }
+
+    .converter-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 14px;
+      margin-top: 16px;
+    }
+    .drop-zone {
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      background: var(--surface2);
+      padding: 22px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color .2s, background .2s;
+    }
+    .drop-zone:hover,
+    .drop-zone.drag-over {
+      border-color: var(--red);
+      background: rgba(255, 0, 0, 0.08);
+    }
+    .drop-zone-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .drop-zone-meta {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+    }
+    .drop-zone input[type="file"] {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .converter-field select {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 0.9rem;
+      outline: none;
+    }
+    .converter-field select:focus { border-color: var(--red); }
+    .converter-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 18px;
+    }
+    .converter-result {
+      display: none;
+      margin-top: 16px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface2);
+      color: var(--text-dim);
+      font-size: 0.86rem;
+      line-height: 1.45;
+    }
+    .converter-result.ok {
+      border-color: rgba(76,175,80,.45);
+      color: #a5d6a7;
+    }
+    .converter-result.fail {
+      border-color: rgba(244,67,54,.45);
+      color: #ef9a9a;
+    }
+
+    /* ── Selection card ── */
+    #selection-card { display: none; }
+
+    .selection-toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .select-all-row {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 0;
+      color: var(--text);
+      font-size: 0.9rem;
+    }
+    .select-all-row input,
+    .video-option input {
+      accent-color: var(--red);
+    }
+    .selection-note {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+    }
+    .selection-search {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 14px;
+    }
+    .selection-search input[type="text"] {
+      min-width: 220px;
+    }
+    .selection-mini-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .selection-range-actions {
+      display: none;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin: -2px 0 14px;
+    }
+    button.ghost {
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: transparent;
+      color: var(--text-dim);
+      font-size: 0.82rem;
+      cursor: pointer;
+      transition: border-color .2s, color .2s;
+    }
+    button.ghost:hover { border-color: var(--red); color: var(--text); }
+    button.ghost.active {
+      border-color: var(--red);
+      color: var(--text);
+      background: rgba(255, 77, 77, 0.08);
+    }
+    .video-picker {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 320px;
+      overflow-y: auto;
+      margin-bottom: 20px;
+      padding-right: 4px;
+    }
+    .video-option {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface2);
+    }
+    .video-option.hidden { display: none; }
+    .video-option-copy {
+      min-width: 0;
+      flex: 1;
+    }
+    .video-option-title {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+      font-size: 0.9rem;
+      line-height: 1.45;
+      color: var(--text);
+    }
+    .video-option-index {
+      color: var(--text-dim);
+      font-variant-numeric: tabular-nums;
+      flex-shrink: 0;
+      min-width: 2.4rem;
+    }
+    .video-option-meta {
+      font-size: 0.76rem;
+      color: var(--text-dim);
+      margin-top: 4px;
+    }
+    .selection-empty {
+      display: none;
+      padding: 18px 14px;
+      border: 1px dashed var(--border);
+      border-radius: 8px;
+      color: var(--text-dim);
+      text-align: center;
+      font-size: 0.88rem;
+      margin-bottom: 20px;
+    }
+    #section-card { display: none; }
+    .section-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    .section-group-list {
+      display: none;
+      margin-bottom: 20px;
+    }
+    .section-source-group {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface2);
+      padding: 16px;
+    }
+    .section-source-group + .section-source-group {
+      margin-top: 14px;
+    }
+    .section-source-title {
+      font-size: 0.98rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .section-source-meta {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      margin-bottom: 12px;
+      line-height: 1.45;
+      word-break: break-word;
+    }
+    .section-subgrid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 10px;
+    }
+    .section-option {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface2);
+      color: var(--text);
+      padding: 16px;
+      text-align: left;
+      cursor: pointer;
+      transition: border-color .2s, transform .2s, background .2s;
+    }
+    .section-option:hover {
+      border-color: var(--red);
+      background: #2a2a2a;
+      transform: translateY(-1px);
+    }
+    .section-check-option {
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      user-select: none;
+    }
+    .section-check-option input {
+      margin-top: 4px;
+      accent-color: var(--red);
+    }
+    .section-check-option.selected {
+      border-color: var(--red);
+      background: rgba(255,0,0,.08);
+    }
+    .section-option-title {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .section-option-meta {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      line-height: 1.45;
+    }
+
+    /* ── Progress card ── */
+    #progress-card { display: none; }
+
+    .progress-header {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 14px;
+    }
+    .progress-header h3 { font-size: 1rem; }
+
+    .progress-bar-wrap {
+      background: var(--surface2);
+      border-radius: 99px;
+      height: 6px;
+      overflow: hidden;
+      margin-bottom: 14px;
+    }
+    .progress-bar {
+      height: 100%;
+      background: var(--red);
+      width: 0%;
+      border-radius: 99px;
+      transition: width .3s;
+    }
+
+    .log {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      max-height: 200px;
+      overflow-y: auto;
+      font-size: 0.82rem;
+      font-family: "SF Mono", "Fira Code", monospace;
+    }
+    .log-line { padding: 2px 0; display: flex; gap: 8px; }
+    .log-line .tag {
+      font-size: 0.7rem;
+      padding: 1px 6px;
+      border-radius: 4px;
+      white-space: nowrap;
+      align-self: flex-start;
+      margin-top: 1px;
+    }
+    .tag-info    { background: rgba(33,150,243,.2); color: #64b5f6; }
+    .tag-success { background: rgba(76,175,80,.2);  color: #81c784; }
+    .tag-warning { background: rgba(255,152,0,.2);  color: #ffb74d; }
+    .tag-error   { background: rgba(244,67,54,.2);  color: #e57373; }
+    .tag-progress{ background: rgba(156,39,176,.2); color: #ce93d8; }
+    .tag-done    { background: rgba(76,175,80,.3);  color: #a5d6a7; }
+
+    /* ── Results card ── */
+    #results-card { display: none; }
+
+    .results-actions {
+      display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px;
+    }
+    button.secondary {
+      padding: 10px 18px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--surface2);
+      color: var(--text);
+      font-size: 0.88rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: border-color .2s;
+    }
+    button.secondary:hover { border-color: var(--red); }
+    button.danger {
+      padding: 10px 18px;
+      border: 1px solid rgba(255, 0, 0, 0.5);
+      border-radius: 8px;
+      background: transparent;
+      color: #ff5a5a;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background .2s, border-color .2s;
+    }
+    button.danger:hover {
+      background: rgba(255, 0, 0, 0.08);
+      border-color: rgba(255, 0, 0, 0.8);
+    }
+    button.danger:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .stat-row {
+      display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap;
+    }
+    .stat {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 18px;
+      flex: 1; min-width: 110px; text-align: center;
+    }
+    .stat .num { font-size: 1.6rem; font-weight: 700; }
+    .stat .lbl { font-size: 0.75rem; color: var(--text-dim); margin-top: 2px; }
+    .stat.ok .num { color: var(--success); }
+    .stat.fail .num { color: var(--error); }
+
+    /* ── Transcript list ── */
+    .transcript-list { display: flex; flex-direction: column; gap: 12px; }
+
+    .transcript-item {
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .transcript-item-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px;
+      background: var(--surface2);
+      cursor: pointer;
+      user-select: none;
+      gap: 10px;
+    }
+    .transcript-item-header:hover { background: #2a2a2a; }
+    .transcript-title { font-size: 0.9rem; font-weight: 500; flex: 1; }
+    .transcript-badge {
+      font-size: 0.72rem; padding: 2px 8px; border-radius: 99px; white-space: nowrap;
+    }
+    .badge-ok   { background: rgba(76,175,80,.2); color: #81c784; }
+    .badge-fail { background: rgba(244,67,54,.2); color: #e57373; }
+
+    .transcript-body {
+      display: none;
+      padding: 16px;
+      border-top: 1px solid var(--border);
+    }
+    .transcript-body.open { display: block; }
+    .transcript-text {
+      font-size: 0.85rem;
+      line-height: 1.6;
+      color: var(--text-dim);
+      max-height: 220px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .transcript-actions {
+      margin-top: 12px;
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .transcript-action {
+      margin-top: 10px;
+      font-size: 0.8rem;
+      padding: 6px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--surface2);
+      color: var(--text);
+      cursor: pointer;
+    }
+    .transcript-action:hover { border-color: var(--red); }
+
+    /* ── Spinner ── */
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid rgba(255,255,255,.2);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      display: inline-block; vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .chevron { transition: transform .2s; display: inline-block; }
+    .chevron.open { transform: rotate(90deg); }
+
+    /* scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+  </style>
+</head>
+<body>
+
+<nav class="top-nav" aria-label="Primary">
+  <div class="top-nav-inner">
+    <div class="nav-brand">
+      <span class="nav-brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M16.5 5.5v13L6 12z"/></svg>
+      </span>
+      <span>YouTube Toolkit</span>
+    </div>
+    <div class="nav-tabs">
+      <button class="nav-tab active" type="button" data-view="extractor">Extractor</button>
+      <button class="nav-tab" type="button" data-view="converter">Converter</button>
+    </div>
+  </div>
+</nav>
+
+<main class="app-view active-view" id="extractorView">
+<header>
+  <div class="logo">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M16.5 5.5v13L6 12z"/>
+      </svg>
+    </div>
+    <h1>Extractor</h1>
+  </div>
+  <p>Extract transcripts, MP3s, or MP4s from YouTube videos, playlists, channels, or combos</p>
+</header>
+
+<div class="card status-card">
+  <div class="status-row">
+    <div class="status-block">
+      <span class="status-label">Proxy IP</span>
+      <span class="status-value" id="proxyIpValue">Not checked</span>
+    </div>
+    <div class="status-block">
+      <span class="status-label">Location</span>
+      <span class="status-value status-meta" id="proxyGeoValue">
+        <span class="status-flag" id="proxyGeoFlag">•</span>
+        <span id="proxyGeoText">Not checked</span>
+      </span>
+    </div>
+    <div class="status-actions">
+      <button class="secondary" id="proxyIpRefreshBtn" type="button" onclick="refreshProxyIp()">Refresh IP</button>
+      <button class="danger" id="quitBtn" type="button" onclick="quitApp()">Quit App</button>
+    </div>
+  </div>
+  <div class="status-hint" id="proxyIpHint">Shows the current proxy egress IP (via the local gateway).</div>
+</div>
+
+<!-- Input card -->
+<div class="card">
+  <div class="mode-group" id="modeGroup">
+    <button class="mode-btn active" data-mode="video">
+      <span class="icon">🎬</span>Single Video
+    </button>
+    <button class="mode-btn" data-mode="playlist">
+      <span class="icon">📋</span>Playlist
+    </button>
+    <button class="mode-btn" data-mode="channel">
+      <span class="icon">📺</span>Channel
+    </button>
+    <button class="mode-btn" data-mode="combo">
+      <span class="icon">🧩</span>Combo
+    </button>
+  </div>
+
+  <label id="urlLabel" for="urlInput">YouTube video URL</label>
+  <div class="input-row" id="singleInputRow">
+    <input type="text" id="urlInput" placeholder="https://www.youtube.com/watch?v=..." />
+    <button class="primary" id="extractBtn" onclick="startExtraction()">Extract</button>
+  </div>
+  <div class="combo-input" id="comboInputRow">
+    <textarea id="comboInput" placeholder="https://www.youtube.com/@ChannelName/videos&#10;https://www.youtube.com/playlist?list=PLxxx"></textarea>
+    <div class="combo-input-actions">
+      <button class="primary" id="comboExtractBtn" onclick="startExtraction()">Find Videos</button>
+    </div>
+  </div>
+  <div class="scope-row" id="scopeRow">
+    <label for="scopeSelect">Load scope</label>
+    <select id="scopeSelect">
+      <option value="100">Latest 100 videos</option>
+      <option value="500">Latest 500 videos</option>
+      <option value="1000" selected>Latest 1000 videos</option>
+      <option value="5000">Latest 5000 videos</option>
+      <option value="all">All videos</option>
+    </select>
+    <span class="scope-helper">Applies before discovery so very large channels do not try to load everything.</span>
+  </div>
+  <div class="option-row" id="outputRow">
+    <label for="outputTypeSelect">Output</label>
+    <select id="outputTypeSelect">
+      <option value="transcript" selected>Transcript</option>
+      <option value="mp3">MP3</option>
+      <option value="mp4">MP4</option>
+    </select>
+    <label for="qualitySelect" id="qualityLabel" style="display:none">Quality</label>
+    <select id="qualitySelect" style="display:none"></select>
+    <span class="scope-helper" id="outputHelper">Transcripts can be copied, downloaded as text, or exported in a ZIP with CSV.</span>
+  </div>
+  <div class="option-row" id="cookieFallbackRow">
+    <label class="select-all-row">
+      <input type="checkbox" id="useBrowserCookiesCheckbox" />
+      <span>Use Chrome cookies if transcripts are blocked</span>
+    </label>
+    <span class="scope-helper">Off by default. Turn this on only if YouTube returns 429; macOS may ask for Chrome Safe Storage access.</span>
+  </div>
+  <div class="hint" id="hint">Paste a YouTube video URL to extract its transcript.</div>
+</div>
+
+<!-- Selection card -->
+<div class="card" id="section-card">
+  <div class="progress-header">
+    <h3>Choose Section</h3>
+    <span id="sectionCount" style="font-size:0.85rem;color:var(--text-dim)"></span>
+  </div>
+  <div class="hint" id="sectionHint" style="margin-top:0;margin-bottom:16px">Pick which channel section to load first. After that, you can choose the individual videos.</div>
+  <div class="section-grid" id="sectionGrid"></div>
+  <div class="section-group-list" id="sectionGroupList"></div>
+  <div class="results-actions" style="margin-bottom:0">
+    <button class="primary" id="loadSectionsBtn" onclick="loadSelectedSections()" style="display:none">Load Selected Sections</button>
+    <button class="secondary" id="sectionContinueBtn" onclick="continueWithCurrentVideos()" style="display:none">Continue With Current Videos</button>
+    <button class="secondary" onclick="resetApp()">↩ New Extraction</button>
+  </div>
+</div>
+
+<!-- Selection card -->
+<div class="card" id="selection-card">
+  <div class="progress-header">
+    <h3>Choose Videos</h3>
+    <span id="selectionCount" style="font-size:0.85rem;color:var(--text-dim)"></span>
+  </div>
+  <div class="selection-toolbar">
+    <label class="select-all-row">
+      <input type="checkbox" id="selectAllCheckbox" checked />
+      <span>Select all</span>
+    </label>
+    <span class="selection-note">Uncheck any videos you want to skip, then transcribe the selection.</span>
+  </div>
+  <div class="selection-search">
+    <input type="text" id="selectionSearchInput" placeholder="Search titles or video IDs" />
+    <div class="selection-mini-actions">
+      <button class="ghost" type="button" onclick="selectVisible(true)">Select Visible</button>
+      <button class="ghost" type="button" onclick="selectVisible(false)">Clear Visible</button>
+      <button class="ghost" type="button" onclick="clearSelectionSearch()">Clear Search</button>
+    </div>
+  </div>
+  <div class="selection-range-actions" id="selectionRangeActions"></div>
+  <div class="video-picker" id="videoPicker"></div>
+  <div class="selection-empty" id="selectionEmpty">No videos match that search.</div>
+  <div class="results-actions" style="margin-bottom:0">
+    <button class="primary" id="transcribeSelectedBtn" onclick="startSelectedExtraction()">Transcribe Selected</button>
+    <button class="secondary" onclick="clearSelection()">Back</button>
+  </div>
+</div>
+
+<!-- Progress card -->
+<div class="card" id="progress-card">
+  <div class="progress-header">
+    <h3>⏳ Processing</h3>
+    <span id="progressCount" style="font-size:0.85rem;color:var(--text-dim)"></span>
+  </div>
+  <div class="progress-bar-wrap"><div class="progress-bar" id="progressBar"></div></div>
+  <div class="log" id="log"></div>
+</div>
+
+<!-- Results card -->
+<div class="card" id="results-card">
+  <h3 style="margin-bottom:16px">Results</h3>
+
+  <div class="stat-row">
+    <div class="stat ok">
+      <div class="num" id="statOk">0</div>
+      <div class="lbl">Extracted</div>
+    </div>
+    <div class="stat fail">
+      <div class="num" id="statFail">0</div>
+      <div class="lbl">Failed</div>
+    </div>
+    <div class="stat">
+      <div class="num" id="statTotal">0</div>
+      <div class="lbl">Total</div>
+    </div>
+  </div>
+
+  <div class="results-actions">
+    <button class="secondary" id="copyBtn" onclick="copyResults()" style="display:none">📋 Copy transcript</button>
+    <button class="secondary" id="downloadMarkdownBtn" onclick="downloadMarkdown()" style="display:none">⬇ Download Markdown (.md)</button>
+    <button class="secondary" id="downloadMarkdownZipBtn" onclick="downloadMarkdownZip()" style="display:none">⬇ Download Markdown Files (.zip)</button>
+    <button class="primary" id="downloadBtn" onclick="downloadZip()" style="display:none">⬇ Download All (.zip)</button>
+    <button class="secondary" onclick="resetApp()">↩ New Extraction</button>
+  </div>
+
+  <div class="transcript-list" id="transcriptList"></div>
+</div>
+</main>
+
+<main class="app-view" id="converterView">
+  <header>
+    <div class="logo">
+      <div class="logo-icon">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M7 7h8.2l-2.6-2.6L14 3l5 5-5 5-1.4-1.4L15.2 9H7V7zm10 10H8.8l2.6 2.6L10 21l-5-5 5-5 1.4 1.4L8.8 15H17v2z"/>
+        </svg>
+      </div>
+      <h1>Converter</h1>
+    </div>
+    <p>Convert audio files and documents between common local formats</p>
+  </header>
+
+  <div class="card">
+    <label for="converterFileInput">Files</label>
+    <div class="drop-zone" id="converterDropZone" tabindex="0" role="button" aria-label="Choose files or drop files here">
+      <input type="file" id="converterFileInput" multiple />
+      <div class="drop-zone-title" id="converterDropTitle">Drop files here or click to choose</div>
+      <div class="drop-zone-meta" id="converterDropMeta">Audio and document files are supported.</div>
+    </div>
+
+    <div class="converter-grid">
+      <div class="converter-field">
+        <label for="converterKindSelect">Type</label>
+        <select id="converterKindSelect">
+          <option value="auto" selected>Auto detect</option>
+          <option value="audio">Audio</option>
+          <option value="document">Document</option>
+        </select>
+      </div>
+      <div class="converter-field">
+        <label for="converterTargetSelect">Convert to</label>
+        <select id="converterTargetSelect"></select>
+      </div>
+    </div>
+
+    <div class="hint" id="converterHint">Select one or more files. Each file is converted individually; multiple outputs download together as a ZIP.</div>
+
+    <div class="converter-actions">
+      <button class="primary" id="convertBtn" type="button" onclick="startConversion()">Convert</button>
+      <button class="secondary" type="button" onclick="resetConverter()">Clear</button>
+    </div>
+    <div class="converter-result" id="converterResult"></div>
+  </div>
+</main>
+
+<script>
+  const HINTS = {
+    video:    "Paste a single YouTube video URL, e.g. https://youtu.be/dQw4w9WgXcQ",
+    playlist: "Paste a YouTube playlist URL, e.g. https://youtube.com/playlist?list=PLxxx",
+    channel:  "Paste a YouTube channel URL, e.g. https://youtube.com/@ChannelName/videos",
+    combo:    "Paste one YouTube playlist or channel URL per line. The app will merge them into one discovery flow.",
+  };
+  const LABELS = {
+    video: "YouTube video URL",
+    playlist: "Playlist URL",
+    channel: "Channel URL",
+    combo: "Playlist or channel URLs",
+  };
+  const PLACEHOLDERS = {
+    video: "https://www.youtube.com/watch?v=...",
+    playlist: "https://www.youtube.com/playlist?list=PLxxx",
+    channel: "https://www.youtube.com/@ChannelName/videos",
+    combo: "https://www.youtube.com/@ChannelName/videos\nhttps://www.youtube.com/playlist?list=PLxxx",
+  };
+  const OUTPUT_CONFIG = {
+    transcript: {
+      helper: "Transcript text and Markdown files include URL, channel, and published date. You can export one file, one combined Markdown file, Markdown files in a ZIP, or a TXT ZIP with CSV.",
+      qualityLabel: "",
+      options: [],
+    },
+    mp3: {
+      helper: "Downloads MP3 audio. ffmpeg and ffprobe need to be installed locally.",
+      qualityLabel: "MP3 quality",
+      options: [
+        { value: "best", label: "Best available" },
+        { value: "320", label: "320 kbps" },
+        { value: "192", label: "192 kbps" },
+        { value: "128", label: "128 kbps" },
+      ],
+    },
+    mp4: {
+      helper: "Downloads MP4 video. Higher qualities depend on what YouTube makes available.",
+      qualityLabel: "MP4 quality",
+      options: [
+        { value: "best", label: "Best available" },
+        { value: "1080", label: "Up to 1080p" },
+        { value: "720", label: "Up to 720p" },
+        { value: "480", label: "Up to 480p" },
+      ],
+    },
+  };
+  const CONVERTER_TARGETS = {
+    audio: [
+      { value: "mp3_320", label: "MP3 320 kbps" },
+      { value: "mp3_192", label: "MP3 192 kbps" },
+      { value: "wav", label: "WAV" },
+      { value: "m4a", label: "M4A / MP4A AAC" },
+      { value: "aac", label: "AAC" },
+      { value: "flac", label: "FLAC" },
+      { value: "ogg", label: "OGG Vorbis" },
+    ],
+    document: [
+      { value: "docx", label: "DOCX" },
+      { value: "pdf", label: "PDF" },
+      { value: "md", label: "Markdown (.md)" },
+      { value: "txt", label: "Text (.txt)" },
+    ],
+  };
+  const AUDIO_EXTENSIONS = new Set(["aac", "aiff", "aif", "alac", "flac", "m4a", "m4b", "mka", "mp3", "mp4", "mpeg", "mpg", "oga", "ogg", "opus", "wav", "webm", "wma"]);
+  const DOCUMENT_EXTENSIONS = new Set(["docx", "pdf", "md", "markdown", "txt", "text"]);
+  const SELECTION_BATCH_SIZE = 50;
+
+  let currentMode = "video";
+  let currentOutputType = "transcript";
+  let currentQuality = null;
+  let currentJobId = null;
+  let currentResults = [];
+  let currentSourceUrl = "";
+  let currentSourceTitle = "";
+  let currentDiscoveredVideos = [];
+  let currentSections = [];
+  let currentComboUrls = [];
+  let currentComboBaseVideos = [];
+  let currentComboSectionGroups = [];
+
+  document.querySelectorAll(".nav-tab").forEach(tab => {
+    tab.addEventListener("click", () => setActiveView(tab.dataset.view));
+  });
+
+  document.getElementById("converterKindSelect").addEventListener("change", updateConverterTargets);
+  document.getElementById("converterFileInput").addEventListener("change", handleConverterFileChange);
+  setupConverterDropZone();
+
+  function setActiveView(view) {
+    const resolvedView = view === "converter" ? "converter" : "extractor";
+    document.querySelectorAll(".nav-tab").forEach(tab => {
+      tab.classList.toggle("active", tab.dataset.view === resolvedView);
+    });
+    document.getElementById("extractorView").classList.toggle("active-view", resolvedView === "extractor");
+    document.getElementById("converterView").classList.toggle("active-view", resolvedView === "converter");
+  }
+
+  function inferConverterKind(fileName) {
+    const extension = String(fileName || "").split(".").pop().toLowerCase();
+    if (AUDIO_EXTENSIONS.has(extension)) return "audio";
+    if (DOCUMENT_EXTENSIONS.has(extension)) return "document";
+    return "audio";
+  }
+
+  function updateConverterTargets() {
+    const kindSelect = document.getElementById("converterKindSelect");
+    const file = document.getElementById("converterFileInput").files[0];
+    const resolvedKind = kindSelect.value === "auto" ? inferConverterKind(file?.name || "") : kindSelect.value;
+    const targets = CONVERTER_TARGETS[resolvedKind] || CONVERTER_TARGETS.audio;
+    const targetSelect = document.getElementById("converterTargetSelect");
+    const previous = targetSelect.value;
+    targetSelect.innerHTML = targets
+      .map(option => `<option value="${escHtml(option.value)}">${escHtml(option.label)}</option>`)
+      .join("");
+    targetSelect.value = targets.some(option => option.value === previous) ? previous : targets[0].value;
+
+    const fileCount = document.getElementById("converterFileInput").files.length;
+    const batchText = fileCount > 1 ? ` ${fileCount} files will download as a ZIP.` : "";
+    const hint = resolvedKind === "audio"
+      ? `Audio conversion uses ffmpeg. Each selected file is converted individually.${batchText}`
+      : `Document conversion supports DOCX, PDF, Markdown, and TXT. Complex DOCX/PDF layout may be simplified.${batchText}`;
+    document.getElementById("converterHint").textContent = hint;
+  }
+
+  function handleConverterFileChange() {
+    const kindSelect = document.getElementById("converterKindSelect");
+    if (kindSelect.value === "auto") updateConverterTargets();
+    updateConverterDropSummary();
+    setConverterMessage("");
+  }
+
+  function setupConverterDropZone() {
+    const dropZone = document.getElementById("converterDropZone");
+    const fileInput = document.getElementById("converterFileInput");
+    if (!dropZone || !fileInput) return;
+
+    dropZone.addEventListener("click", () => fileInput.click());
+    dropZone.addEventListener("keydown", event => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        fileInput.click();
+      }
+    });
+
+    ["dragenter", "dragover"].forEach(type => {
+      dropZone.addEventListener(type, event => {
+        event.preventDefault();
+        event.stopPropagation();
+        dropZone.classList.add("drag-over");
+      });
+    });
+
+    ["dragleave", "drop"].forEach(type => {
+      dropZone.addEventListener(type, event => {
+        event.preventDefault();
+        event.stopPropagation();
+        dropZone.classList.remove("drag-over");
+      });
+    });
+
+    dropZone.addEventListener("drop", event => {
+      const files = event.dataTransfer?.files;
+      if (!files || !files.length) return;
+      fileInput.files = files;
+      handleConverterFileChange();
+    });
+  }
+
+  function updateConverterDropSummary() {
+    const files = Array.from(document.getElementById("converterFileInput").files);
+    const title = document.getElementById("converterDropTitle");
+    const meta = document.getElementById("converterDropMeta");
+    if (!files.length) {
+      title.textContent = "Drop files here or click to choose";
+      meta.textContent = "Audio and document files are supported.";
+      return;
+    }
+    title.textContent = files.length === 1 ? files[0].name : `${files.length} files selected`;
+    meta.textContent = files.length === 1
+      ? `${Math.max(1, Math.round(files[0].size / 1024))} KB`
+      : files.slice(0, 3).map(file => file.name).join(", ") + (files.length > 3 ? `, +${files.length - 3} more` : "");
+  }
+
+  function setConverterMessage(message, state = "") {
+    const result = document.getElementById("converterResult");
+    result.textContent = message || "";
+    result.className = `converter-result ${state}`.trim();
+    result.style.display = message ? "block" : "none";
+  }
+
+  async function startConversion() {
+    const fileInput = document.getElementById("converterFileInput");
+    const files = Array.from(fileInput.files);
+    if (!files.length) {
+      setConverterMessage("Choose at least one file first.", "fail");
+      return;
+    }
+
+    const btn = document.getElementById("convertBtn");
+    const form = new FormData();
+    files.forEach(file => form.append("files", file));
+    form.append("kind", document.getElementById("converterKindSelect").value);
+    form.append("target", document.getElementById("converterTargetSelect").value);
+
+    btn.disabled = true;
+    btn.innerHTML = `<span class="spinner"></span>`;
+    setConverterMessage("Converting...");
+
+    try {
+      const res = await fetch("/convert", { method: "POST", body: form });
+      if (!res.ok) {
+        let message = "Conversion failed.";
+        try {
+          const data = await res.json();
+          message = data.error || message;
+        } catch (_) {}
+        setConverterMessage(message, "fail");
+        return;
+      }
+
+      const blob = await res.blob();
+      const disposition = res.headers.get("Content-Disposition") || "";
+      const match = disposition.match(/filename\*=UTF-8''([^;]+)|filename="?([^"]+)"?/i);
+      const downloadName = match ? decodeURIComponent(match[1] || match[2]) : "converted-file";
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = downloadName;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+      const label = files.length > 1 ? `${files.length} files` : downloadName;
+      setConverterMessage(`Converted and downloaded: ${label}`, "ok");
+    } catch (err) {
+      setConverterMessage(err.message || "Conversion failed.", "fail");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Convert";
+    }
+  }
+
+  function resetConverter() {
+    document.getElementById("converterFileInput").value = "";
+    document.getElementById("converterKindSelect").value = "auto";
+    updateConverterTargets();
+    updateConverterDropSummary();
+    setConverterMessage("");
+  }
+
+  function countryFlag(code) {
+    if (!code || typeof code !== "string" || code.length !== 2) return "";
+    const chars = code.toUpperCase().split("");
+    return String.fromCodePoint(...chars.map(c => 127397 + c.charCodeAt(0)));
+  }
+
+  async function refreshProxyIp() {
+    const valueEl = document.getElementById("proxyIpValue");
+    const hintEl = document.getElementById("proxyIpHint");
+    const geoTextEl = document.getElementById("proxyGeoText");
+    const geoFlagEl = document.getElementById("proxyGeoFlag");
+    const btn = document.getElementById("proxyIpRefreshBtn");
+    if (!valueEl || !hintEl) return;
+    if (btn) btn.disabled = true;
+    valueEl.textContent = "Checking...";
+    hintEl.textContent = "Contacting proxy gateway...";
+    if (geoTextEl) geoTextEl.textContent = "Checking...";
+    if (geoFlagEl) geoFlagEl.textContent = "•";
+    try {
+      const res = await fetch("/proxy-ip");
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || "Unable to check proxy IP.");
+      }
+      valueEl.textContent = data.ip || "Unknown";
+      hintEl.textContent = data.note || "Proxy IP updated.";
+      const city = data.city || "";
+      const country = data.country || "";
+      const countryCode = data.country_code || "";
+      if (geoTextEl) {
+        const parts = [];
+        if (city) parts.push(city);
+        if (country) parts.push(country);
+        geoTextEl.textContent = parts.length ? parts.join(", ") : "Location unavailable";
+      }
+      if (geoFlagEl) {
+        const flag = countryFlag(countryCode);
+        geoFlagEl.textContent = flag || "•";
+      }
+      if (data.geo_error && hintEl) {
+        hintEl.textContent = data.geo_error;
+      }
+    } catch (err) {
+      valueEl.textContent = "Unavailable";
+      hintEl.textContent = err.message || "Proxy IP check failed.";
+      if (geoTextEl) geoTextEl.textContent = "Unavailable";
+      if (geoFlagEl) geoFlagEl.textContent = "•";
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  async function quitApp() {
+    const btn = document.getElementById("quitBtn");
+    const hintEl = document.getElementById("proxyIpHint");
+    if (!confirm("Quit the app and stop the proxy gateway?")) return;
+    if (btn) btn.disabled = true;
+    if (hintEl) hintEl.textContent = "Shutting down...";
+    try {
+      await fetch("/shutdown", { method: "POST" });
+    } catch (err) {
+      if (hintEl) hintEl.textContent = "Shutdown request failed. Close the app manually.";
+    }
+  }
+
+  // Mode buttons
+  document.getElementById("modeGroup").addEventListener("click", e => {
+    const btn = e.target.closest(".mode-btn");
+    if (!btn) return;
+    setMode(btn.dataset.mode);
+    hideWorkflowCards();
+  });
+
+  // Enter key
+  document.getElementById("urlInput").addEventListener("keydown", e => {
+    if (e.key === "Enter") startExtraction();
+  });
+  document.getElementById("comboInput").addEventListener("keydown", e => {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) startExtraction();
+  });
+  document.getElementById("urlInput").addEventListener("input", syncModeWithUrl);
+  document.getElementById("urlInput").addEventListener("paste", () => setTimeout(syncModeWithUrl, 0));
+  document.getElementById("outputTypeSelect").addEventListener("change", e => setOutputType(e.target.value));
+  document.getElementById("qualitySelect").addEventListener("change", e => {
+    currentQuality = e.target.value || null;
+    updatePrimaryBtn();
+  });
+  document.getElementById("selectAllCheckbox").addEventListener("change", toggleSelectAll);
+  document.getElementById("selectionSearchInput").addEventListener("input", applySelectionFilter);
+
+  async function startExtraction() {
+    if (currentMode === "combo") {
+      const urls = getComboUrls();
+      if (!urls.length) { alert("Please enter at least one playlist or channel URL."); return; }
+      currentSourceUrl = "";
+      currentSourceTitle = "Combo selection";
+      currentComboUrls = urls;
+      await discoverComboSources(urls);
+      return;
+    }
+
+    const url = document.getElementById("urlInput").value.trim();
+    if (!url) { alert("Please enter a URL."); return; }
+    syncModeWithUrl();
+    currentSourceUrl = url;
+
+    if (currentMode === "video") {
+      await beginExtraction();
+      return;
+    }
+
+    await discoverVideos(url);
+  }
+
+  function getComboUrls() {
+    return Array.from(new Set(
+      document.getElementById("comboInput").value
+        .split(/\r?\n/)
+        .map(url => url.trim())
+        .filter(Boolean)
+    ));
+  }
+
+  function setOutputType(type) {
+    currentOutputType = OUTPUT_CONFIG[type] ? type : "transcript";
+    const config = OUTPUT_CONFIG[currentOutputType];
+    const qualityLabel = document.getElementById("qualityLabel");
+    const qualitySelect = document.getElementById("qualitySelect");
+    const outputHelper = document.getElementById("outputHelper");
+    const cookieFallbackRow = document.getElementById("cookieFallbackRow");
+
+    document.getElementById("outputTypeSelect").value = currentOutputType;
+    outputHelper.textContent = config.helper;
+    cookieFallbackRow.style.display = currentOutputType === "transcript" ? "flex" : "none";
+
+    if (!config.options.length) {
+      currentQuality = null;
+      qualityLabel.style.display = "none";
+      qualitySelect.style.display = "none";
+      qualitySelect.innerHTML = "";
+      updatePrimaryBtn();
+      return;
+    }
+
+    qualityLabel.textContent = config.qualityLabel;
+    qualityLabel.style.display = "block";
+    qualitySelect.style.display = "inline-block";
+    qualitySelect.innerHTML = config.options
+      .map(option => `<option value="${escHtml(option.value)}">${escHtml(option.label)}</option>`)
+      .join("");
+    currentQuality = config.options.some(option => option.value === currentQuality) ? currentQuality : config.options[0].value;
+    qualitySelect.value = currentQuality;
+    updatePrimaryBtn();
+  }
+
+  function logDiscoveryMessages(data) {
+    const notes = Array.isArray(data.notes) ? data.notes : (data.note ? [data.note] : []);
+    const errors = Array.isArray(data.errors) ? data.errors : [];
+    notes.forEach(note => note && addLog("info", note));
+    errors.forEach(error => error && addLog("warning", error));
+  }
+
+  async function discoverVideos(url) {
+    resetRunUi();
+    document.getElementById("progress-card").style.display = "block";
+    addLog("info", "Fetching video list…");
+    setPrimaryBtn(true);
+
+    try {
+      const res = await fetch("/videos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url, mode: currentMode, discovery_limit: getDiscoveryLimit() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        addLog("error", data.error || "Failed to fetch video list.");
+        return;
+      }
+
+      logDiscoveryMessages(data);
+      currentSourceTitle = data.source_title || "";
+      if (data.kind === "sections") {
+        currentSections = data.sections || [];
+        currentComboSectionGroups = [];
+        currentComboBaseVideos = [];
+        if (!currentSections.length) {
+          addLog("warning", "No channel sections found. Check the URL and try again.");
+          return;
+        }
+        showSections(currentSections, currentSourceTitle);
+        return;
+      }
+
+      currentSections = [];
+      currentComboSectionGroups = [];
+      currentComboBaseVideos = [];
+      currentDiscoveredVideos = data.videos || [];
+      if (!currentDiscoveredVideos.length) {
+        addLog("warning", "No videos found. Check the URL and try again.");
+        return;
+      }
+
+      showSelection(currentDiscoveredVideos);
+    } catch (err) {
+      addLog("error", "Network error: " + err.message);
+    } finally {
+      setPrimaryBtn(false);
+    }
+  }
+
+  async function discoverComboSources(urls) {
+    resetRunUi();
+    document.getElementById("progress-card").style.display = "block";
+    addLog("info", `Fetching ${urls.length} source(s)…`);
+    setPrimaryBtn(true);
+
+    try {
+      const res = await fetch("/videos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode: "combo", urls, discovery_limit: getDiscoveryLimit() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        addLog("error", data.error || "Failed to fetch combo video list.");
+        (data.errors || []).forEach(error => addLog("warning", error));
+        return;
+      }
+
+      logDiscoveryMessages(data);
+      currentSections = [];
+      currentComboBaseVideos = Array.isArray(data.videos) ? data.videos : [];
+      currentDiscoveredVideos = [...currentComboBaseVideos];
+      currentComboSectionGroups = Array.isArray(data.section_groups) ? data.section_groups : [];
+      currentSourceTitle = data.source_title || "Combo selection";
+
+      if (currentComboSectionGroups.length) {
+        showComboSections(currentComboSectionGroups, currentComboBaseVideos.length);
+        return;
+      }
+
+      if (!currentDiscoveredVideos.length) {
+        addLog("warning", "No videos found. Check the URLs and try again.");
+        return;
+      }
+
+      showSelection(currentDiscoveredVideos);
+    } catch (err) {
+      addLog("error", "Network error: " + err.message);
+    } finally {
+      setPrimaryBtn(false);
+    }
+  }
+
+  async function beginExtraction(videos = null) {
+    resetRunUi();
+    document.getElementById("progress-card").style.display = "block";
+    setPrimaryBtn(true);
+
+    // POST /extract
+    let jobId;
+    try {
+      const res = await fetch("/extract", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: currentSourceUrl,
+          mode: currentMode,
+          source_title: currentSourceTitle,
+          discovery_limit: getDiscoveryLimit(),
+          output_type: currentOutputType,
+          quality: currentQuality,
+          use_browser_cookies: currentOutputType === "transcript" && document.getElementById("useBrowserCookiesCheckbox").checked,
+          videos,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) { addLog("error", data.error || "Server error"); setPrimaryBtn(false); return; }
+      jobId = data.job_id;
+      currentJobId = jobId;
+    } catch (err) {
+      addLog("error", "Network error: " + err.message);
+      setPrimaryBtn(false);
+      return;
+    }
+
+    // SSE stream
+    const evtSrc = new EventSource(`/stream/${jobId}`);
+    evtSrc.onmessage = e => {
+      const msg = JSON.parse(e.data);
+      addLog(msg.type, msg.message);
+
+      if (msg.type === "progress" && msg.data) {
+        const pct = Math.round((msg.data.current / msg.data.total) * 100);
+        document.getElementById("progressBar").style.width = pct + "%";
+        document.getElementById("progressCount").textContent = `${msg.data.current} / ${msg.data.total}`;
+      }
+
+      if (msg.type === "done" || msg.type === "error") {
+        evtSrc.close();
+        document.getElementById("progressBar").style.width = "100%";
+        setPrimaryBtn(false);
+        // Even on errors (e.g., rate-limit abort), fetch whatever results were captured.
+        fetchResults(jobId);
+      }
+    };
+    evtSrc.onerror = () => {
+      evtSrc.close();
+      setPrimaryBtn(false);
+      fetchResults(jobId);
+    };
+  }
+
+  function showSections(sections, sourceTitle) {
+    const grid = document.getElementById("sectionGrid");
+    const groupList = document.getElementById("sectionGroupList");
+    grid.innerHTML = "";
+    groupList.innerHTML = "";
+    grid.style.display = "grid";
+    groupList.style.display = "none";
+    document.getElementById("sectionHint").textContent = "Pick which channel section to load first. After that, you can choose the individual videos.";
+    document.getElementById("loadSectionsBtn").style.display = "none";
+    document.getElementById("sectionContinueBtn").style.display = "none";
+
+    sections.forEach(section => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "section-option";
+      button.innerHTML = `
+        <div class="section-option-title">${escHtml(section.label || section.title)}</div>
+        <div class="section-option-meta">${escHtml(sourceTitle || section.title || "")}</div>`;
+      button.onclick = () => loadSection(section);
+      grid.appendChild(button);
+    });
+
+    document.getElementById("sectionCount").textContent = `${sections.length} section${sections.length === 1 ? "" : "s"}`;
+    document.getElementById("section-card").style.display = "block";
+    document.getElementById("progress-card").style.display = "none";
+  }
+
+  function showComboSections(sectionGroups, baseVideoCount) {
+    const grid = document.getElementById("sectionGrid");
+    const groupList = document.getElementById("sectionGroupList");
+    grid.innerHTML = "";
+    grid.style.display = "none";
+    groupList.innerHTML = "";
+    groupList.style.display = "block";
+
+    sectionGroups.forEach((group, groupIndex) => {
+      const wrapper = document.createElement("div");
+      wrapper.className = "section-source-group";
+
+      const title = document.createElement("div");
+      title.className = "section-source-title";
+      title.textContent = group.source_title || `Source ${groupIndex + 1}`;
+
+      const meta = document.createElement("div");
+      meta.className = "section-source-meta";
+      meta.textContent = group.source_url || "";
+
+      const subgrid = document.createElement("div");
+      subgrid.className = "section-subgrid";
+
+      (group.sections || []).forEach((section, sectionIndex) => {
+        const option = document.createElement("label");
+        option.className = "section-option section-check-option";
+        option.innerHTML = `
+          <input type="checkbox" class="combo-section-check" data-group-index="${groupIndex}" data-section-index="${sectionIndex}" />
+          <div>
+            <div class="section-option-title">${escHtml(section.label || section.title)}</div>
+            <div class="section-option-meta">${escHtml(section.title || group.source_title || "")}</div>
+          </div>`;
+        subgrid.appendChild(option);
+      });
+
+      wrapper.appendChild(title);
+      wrapper.appendChild(meta);
+      wrapper.appendChild(subgrid);
+      groupList.appendChild(wrapper);
+    });
+
+    document.querySelectorAll(".combo-section-check").forEach(input => {
+      input.addEventListener("change", updateComboSectionSummary);
+    });
+
+    document.getElementById("sectionHint").textContent = baseVideoCount
+      ? `Choose any channel sections to add. ${baseVideoCount} video(s) from the other URLs are already ready to review.`
+      : "Choose one or more channel sections first. Then you can search and select videos from the combined list.";
+    document.getElementById("loadSectionsBtn").style.display = "inline-block";
+    document.getElementById("sectionContinueBtn").style.display = baseVideoCount ? "inline-block" : "none";
+    document.getElementById("section-card").style.display = "block";
+    document.getElementById("progress-card").style.display = "none";
+    updateComboSectionSummary();
+  }
+
+  async function loadSection(section) {
+    currentSourceUrl = section.section_url;
+    currentSourceTitle = section.title || section.label || currentSourceTitle;
+    await discoverVideos(section.section_url);
+  }
+
+  function getSelectedComboSections() {
+    return Array.from(document.querySelectorAll(".combo-section-check:checked"))
+      .map(input => {
+        const group = currentComboSectionGroups[Number(input.dataset.groupIndex)];
+        return group?.sections?.[Number(input.dataset.sectionIndex)];
+      })
+      .filter(Boolean);
+  }
+
+  function updateComboSectionSummary() {
+    document.querySelectorAll(".section-check-option").forEach(option => {
+      const input = option.querySelector(".combo-section-check");
+      option.classList.toggle("selected", Boolean(input?.checked));
+    });
+
+    const total = currentComboSectionGroups.reduce((count, group) => count + (group.sections || []).length, 0);
+    const selected = getSelectedComboSections().length;
+    const sourceCount = currentComboSectionGroups.length;
+    document.getElementById("sectionCount").textContent =
+      `${selected} selected, ${total} section${total === 1 ? "" : "s"}, ${sourceCount} source${sourceCount === 1 ? "" : "s"}`;
+  }
+
+  function dedupeVideos(videos) {
+    const seen = new Set();
+    return videos.filter(video => {
+      const videoId = String(video?.video_id || "").trim();
+      if (!videoId || seen.has(videoId)) return false;
+      seen.add(videoId);
+      return true;
+    });
+  }
+
+  async function fetchSectionVideos(section) {
+    const res = await fetch("/videos", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        url: section.section_url,
+        mode: "channel",
+        discovery_limit: getDiscoveryLimit(),
+      }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      return { error: `${section.source_title || section.label}: ${data.error || "Failed to load section."}` };
+    }
+    if (data.kind !== "videos") {
+      return { error: `${section.source_title || section.label}: unexpected discovery response.` };
+    }
+    return {
+      videos: (data.videos || []).map(video => ({
+        ...video,
+        source_title: video.source_title || data.source_title || section.source_title,
+        source_url: video.source_url || section.source_url,
+      })),
+      notes: Array.isArray(data.notes) ? data.notes : (data.note ? [data.note] : []),
+      errors: Array.isArray(data.errors) ? data.errors : [],
+      section,
+    };
+  }
+
+  async function loadSelectedSections() {
+    const selectedSections = getSelectedComboSections();
+    if (!selectedSections.length) {
+      if (currentComboBaseVideos.length) {
+        continueWithCurrentVideos();
+        return;
+      }
+      alert("Select at least one channel section.");
+      return;
+    }
+
+    resetRunUi();
+    document.getElementById("progress-card").style.display = "block";
+    addLog("info", `Loading ${selectedSections.length} selected section(s)…`);
+    setPrimaryBtn(true);
+
+    try {
+      const responses = await Promise.all(selectedSections.map(fetchSectionVideos));
+      const videos = [...currentComboBaseVideos];
+
+      responses.forEach(result => {
+        if (result.error) {
+          addLog("warning", result.error);
+          return;
+        }
+        addLog("info", `Loaded ${(result.section.label || result.section.title)} from ${result.section.source_title || "channel"}.`);
+        (result.notes || []).forEach(note => note && addLog("info", note));
+        (result.errors || []).forEach(error => error && addLog("warning", error));
+        videos.push(...(result.videos || []));
+      });
+
+      currentDiscoveredVideos = dedupeVideos(videos);
+      if (!currentDiscoveredVideos.length) {
+        addLog("warning", "No videos were found for the selected sections.");
+        document.getElementById("progress-card").style.display = "none";
+        document.getElementById("section-card").style.display = "block";
+        return;
+      }
+      showSelection(currentDiscoveredVideos);
+    } catch (err) {
+      addLog("error", "Failed to load selected sections: " + err.message);
+      document.getElementById("progress-card").style.display = "none";
+      document.getElementById("section-card").style.display = "block";
+    } finally {
+      setPrimaryBtn(false);
+    }
+  }
+
+  function continueWithCurrentVideos() {
+    currentDiscoveredVideos = dedupeVideos(currentComboBaseVideos);
+    if (!currentDiscoveredVideos.length) {
+      alert("Select at least one channel section.");
+      return;
+    }
+    showSelection(currentDiscoveredVideos);
+  }
+
+  function showSelection(videos) {
+    const picker = document.getElementById("videoPicker");
+    picker.innerHTML = "";
+    const uniqueSources = new Set(videos.map(video => String(video.source_title || "").trim()).filter(Boolean));
+    const showSourceTitle = uniqueSources.size > 1;
+    document.getElementById("selectionSearchInput").placeholder = showSourceTitle
+      ? "Search titles, video IDs, or source names"
+      : "Search titles or video IDs";
+
+    videos.forEach((video, index) => {
+      const row = document.createElement("label");
+      row.className = "video-option";
+      row.dataset.searchText = `${(video.title || "").toLowerCase()} ${(video.video_id || "").toLowerCase()} ${((video.release_date || "")).toLowerCase()} ${((video.source_title || "")).toLowerCase()}`;
+      const metaParts = [video.video_id || ""];
+      if (video.release_date) metaParts.push(video.release_date);
+      if (showSourceTitle && video.source_title) metaParts.push(video.source_title);
+      row.innerHTML = `
+        <input type="checkbox" class="video-check" data-index="${index}" checked />
+        <div class="video-option-copy">
+          <div class="video-option-title"><span class="video-option-index">${index + 1}.</span><span>${escHtml(video.title)}</span></div>
+          <div class="video-option-meta">${escHtml(metaParts.join(" • "))}</div>
+        </div>`;
+      picker.appendChild(row);
+    });
+
+    document.getElementById("section-card").style.display = "none";
+    document.getElementById("selection-card").style.display = "block";
+    document.getElementById("progress-card").style.display = "none";
+    picker.querySelectorAll(".video-check").forEach(input => {
+      input.addEventListener("change", updateSelectionSummary);
+    });
+    document.getElementById("selectionSearchInput").value = "";
+    document.getElementById("selectAllCheckbox").checked = true;
+    document.getElementById("selectAllCheckbox").indeterminate = false;
+    renderSelectionRangeActions(videos.length);
+    applySelectionFilter();
+    updateSelectionSummary();
+  }
+
+  function renderSelectionRangeActions(total) {
+    const container = document.getElementById("selectionRangeActions");
+    container.innerHTML = "";
+
+    if (total <= SELECTION_BATCH_SIZE) {
+      container.style.display = "none";
+      return;
+    }
+
+    for (let start = 0; start < total; start += SELECTION_BATCH_SIZE) {
+      const end = Math.min(start + SELECTION_BATCH_SIZE, total);
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "ghost";
+      btn.dataset.start = String(start);
+      btn.dataset.end = String(end - 1);
+      btn.textContent = `Toggle ${start + 1}-${end}`;
+      btn.onclick = () => toggleSelectionRange(start, end - 1);
+      container.appendChild(btn);
+    }
+
+    container.style.display = "flex";
+  }
+
+  async function startSelectedExtraction() {
+    const selectedVideos = getSelectedVideos();
+    if (!selectedVideos.length) {
+      alert("Select at least one video.");
+      return;
+    }
+    await beginExtraction(selectedVideos);
+  }
+
+  function getSelectedVideos() {
+    return Array.from(document.querySelectorAll(".video-check:checked"))
+      .map(input => currentDiscoveredVideos[Number(input.dataset.index)])
+      .filter(Boolean);
+  }
+
+  function toggleSelectAll() {
+    const checked = document.getElementById("selectAllCheckbox").checked;
+    document.querySelectorAll(".video-option:not(.hidden) .video-check").forEach(input => {
+      input.checked = checked;
+    });
+    updateSelectionSummary();
+  }
+
+  function selectVisible(checked) {
+    document.querySelectorAll(".video-option:not(.hidden) .video-check").forEach(input => {
+      input.checked = checked;
+    });
+    updateSelectionSummary();
+  }
+
+  function toggleSelectionRange(startIndex, endIndex) {
+    const rangeChecks = Array.from(document.querySelectorAll(".video-check")).filter(input => {
+      const index = Number(input.dataset.index);
+      return index >= startIndex && index <= endIndex;
+    });
+
+    if (!rangeChecks.length) return;
+
+    const shouldCheck = rangeChecks.some(input => !input.checked);
+    rangeChecks.forEach(input => {
+      input.checked = shouldCheck;
+    });
+    updateSelectionSummary();
+  }
+
+  function clearSelectionSearch() {
+    document.getElementById("selectionSearchInput").value = "";
+    applySelectionFilter();
+  }
+
+  function applySelectionFilter() {
+    const query = document.getElementById("selectionSearchInput").value.trim().toLowerCase();
+    const terms = query ? query.split(/\s+/).filter(Boolean) : [];
+    let visibleCount = 0;
+
+    document.querySelectorAll(".video-option").forEach(row => {
+      const matches = !terms.length || terms.every(term => row.dataset.searchText.includes(term));
+      row.classList.toggle("hidden", !matches);
+      if (matches) visibleCount += 1;
+    });
+
+    document.getElementById("selectionEmpty").style.display = visibleCount ? "none" : "block";
+    updateSelectionSummary();
+  }
+
+  function updateSelectionSummary() {
+    const total = currentDiscoveredVideos.length;
+    const visibleChecks = Array.from(document.querySelectorAll(".video-option:not(.hidden) .video-check"));
+    const visible = visibleChecks.length;
+    const visibleSelected = visibleChecks.filter(input => input.checked).length;
+    const selected = getSelectedVideos().length;
+    const selectAll = document.getElementById("selectAllCheckbox");
+    selectAll.checked = visible > 0 && visibleSelected === visible;
+    selectAll.indeterminate = visibleSelected > 0 && visibleSelected < visible;
+    document.getElementById("selectionCount").textContent = `${selected} selected, ${visible} shown, ${total} total`;
+    document.getElementById("transcribeSelectedBtn").disabled = selected === 0;
+    updateSelectionRangeActionState();
+  }
+
+  function updateSelectionRangeActionState() {
+    document.querySelectorAll("#selectionRangeActions button").forEach(button => {
+      const start = Number(button.dataset.start);
+      const end = Number(button.dataset.end);
+      const rangeChecks = Array.from(document.querySelectorAll(".video-check")).filter(input => {
+        const index = Number(input.dataset.index);
+        return index >= start && index <= end;
+      });
+      const allSelected = rangeChecks.length > 0 && rangeChecks.every(input => input.checked);
+      button.classList.toggle("active", allSelected);
+    });
+  }
+
+  async function fetchResults(jobId, attempt = 0) {
+    try {
+      const res = await fetch(`/results/${jobId}`);
+      if (res.status === 202) {
+        if (attempt < 10) {
+          setTimeout(() => fetchResults(jobId, attempt + 1), 500);
+        }
+        return;
+      }
+      if (!res.ok) return;
+      const data = await res.json();
+      currentOutputType = data.output_type || currentOutputType;
+      currentQuality = data.quality || currentQuality;
+      updateActionLabels();
+      showResults(data.results || []);
+    } catch (_) {}
+  }
+
+  function showResults(results) {
+    currentResults = results;
+    const ok   = results.filter(r => r.success).length;
+    const fail = results.length - ok;
+    const successfulTranscripts = results.filter(r => currentOutputType === "transcript" && r.success && r.transcript);
+
+    document.getElementById("statOk").textContent    = ok;
+    document.getElementById("statFail").textContent  = fail;
+    document.getElementById("statTotal").textContent = results.length;
+    document.getElementById("results-card").style.display = "block";
+
+    const dl = document.getElementById("downloadBtn");
+    dl.style.display = ok > 0 ? "inline-block" : "none";
+    if (ok === 1) {
+      dl.textContent = currentOutputType === "transcript"
+        ? "⬇ Download .txt"
+        : `⬇ Download ${currentOutputType.toUpperCase()}`;
+    } else {
+      dl.textContent = "⬇ Download All (.zip)";
+    }
+
+    const copyBtn = document.getElementById("copyBtn");
+    copyBtn.style.display = successfulTranscripts.length > 0 ? "inline-block" : "none";
+    copyBtn.textContent = successfulTranscripts.length <= 1 ? "📋 Copy transcript" : "📋 Copy all transcripts";
+
+    const markdownBtn = document.getElementById("downloadMarkdownBtn");
+    markdownBtn.style.display = successfulTranscripts.length > 0 ? "inline-block" : "none";
+    markdownBtn.textContent = successfulTranscripts.length <= 1
+      ? "⬇ Download Markdown (.md)"
+      : "⬇ Download All (.md)";
+
+    const markdownZipBtn = document.getElementById("downloadMarkdownZipBtn");
+    markdownZipBtn.style.display = successfulTranscripts.length > 1 ? "inline-block" : "none";
+    markdownZipBtn.textContent = "⬇ Download Markdown Files (.zip)";
+
+    const list = document.getElementById("transcriptList");
+    list.innerHTML = "";
+
+    results.forEach((r, i) => {
+      const item = document.createElement("div");
+      item.className = "transcript-item";
+      const resultTitle = buildResultDisplayTitle(r);
+
+      const header = document.createElement("div");
+      header.className = "transcript-item-header";
+      header.innerHTML = `
+        <span class="chevron" id="chev-${i}">▶</span>
+        <span class="transcript-title">${escHtml(resultTitle)}</span>
+        <span class="transcript-badge ${r.success ? 'badge-ok' : 'badge-fail'}">
+          ${r.success ? "✓ OK" : "✗ Failed"}
+        </span>`;
+      header.onclick = () => toggleItem(i);
+
+      const body = document.createElement("div");
+      body.className = "transcript-body";
+      body.id = `body-${i}`;
+
+      if (currentOutputType === "transcript" && r.success && r.transcript) {
+        body.innerHTML = `
+          <div class="transcript-text">${escHtml(r.transcript)}</div>
+          <div class="transcript-actions">
+            <button class="transcript-action" onclick="copyTranscript(${i}, event)">📋 Copy transcript</button>
+            <button class="transcript-action" onclick="downloadTranscript(${i}, event)">⬇ Download .txt</button>
+            <button class="transcript-action" onclick="downloadTranscriptMarkdown(${i}, event)">⬇ Download .md</button>
+          </div>`;
+      } else if (currentOutputType !== "transcript" && r.success) {
+        const downloadName = r.download_name || `${r.title}.${currentOutputType}`;
+        body.innerHTML = `
+          <div class="transcript-text">Ready to download: ${escHtml(downloadName)}</div>
+          <div class="transcript-actions">
+            <button class="transcript-action" onclick="downloadMediaFile(${i}, event)">⬇ Download ${escHtml(currentOutputType.toUpperCase())}</button>
+          </div>`;
+      } else {
+        const fallbackError = currentOutputType === "transcript" ? "No transcript available" : "No file available";
+        body.innerHTML = `<p style="color:var(--error);font-size:.85rem">Failed: ${escHtml(r.error || fallbackError)}</p>`;
+      }
+
+      item.appendChild(header);
+      item.appendChild(body);
+      list.appendChild(item);
+    });
+  }
+
+  function toggleItem(i) {
+    const body = document.getElementById(`body-${i}`);
+    const chev = document.getElementById(`chev-${i}`);
+    const open = body.classList.toggle("open");
+    chev.classList.toggle("open", open);
+  }
+
+  function copyTranscript(i, e) {
+    e.stopPropagation();
+    const text = buildTranscriptText(currentResults[i]);
+    copyTextToClipboard(text).then(() => {
+      const btn = e.target;
+      btn.textContent = "✅ Copied!";
+      setTimeout(() => btn.textContent = "📋 Copy transcript", 1500);
+    });
+  }
+
+  function copyResults() {
+    const successfulTranscripts = currentResults.filter(r => currentOutputType === "transcript" && r.success && r.transcript);
+    if (!successfulTranscripts.length) return;
+
+    const text = successfulTranscripts.length === 1
+      ? buildTranscriptText(successfulTranscripts[0])
+      : successfulTranscripts.map(buildTranscriptText).join("\n\n========================================\n\n");
+
+    copyTextToClipboard(text).then(() => {
+      const btn = document.getElementById("copyBtn");
+      const original = successfulTranscripts.length <= 1 ? "📋 Copy transcript" : "📋 Copy all transcripts";
+      btn.textContent = "✅ Copied!";
+      setTimeout(() => btn.textContent = original, 1500);
+    });
+  }
+
+  function downloadTranscript(i, e) {
+    e.stopPropagation();
+    const result = currentResults[i];
+    if (!result?.transcript) return;
+    const blob = new Blob([buildTranscriptDocumentText(result)], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = buildTranscriptDownloadName(result, ".txt");
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  }
+
+  function downloadTranscriptMarkdown(i, e) {
+    e.stopPropagation();
+    const result = currentResults[i];
+    if (!result?.transcript) return;
+    const blob = new Blob([buildTranscriptMarkdownText(result)], { type: "text/markdown;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = buildTranscriptDownloadName(result, ".md");
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  }
+
+  function downloadMediaFile(i, e) {
+    e.stopPropagation();
+    const result = currentResults[i];
+    if (!result?.video_id || !currentJobId) return;
+    window.location.href = `/download-item/${encodeURIComponent(currentJobId)}/${encodeURIComponent(result.video_id)}`;
+  }
+
+  function downloadZip() {
+    if (!currentJobId) return;
+    window.location.href = `/download/${currentJobId}`;
+  }
+
+  function downloadMarkdown() {
+    if (!currentJobId) return;
+    window.location.href = `/download-markdown/${currentJobId}`;
+  }
+
+  function downloadMarkdownZip() {
+    if (!currentJobId) return;
+    window.location.href = `/download-markdown-files/${currentJobId}`;
+  }
+
+  function clearSelection() {
+    currentDiscoveredVideos = [];
+    document.getElementById("selection-card").style.display = "none";
+    document.getElementById("selectionSearchInput").value = "";
+    document.getElementById("videoPicker").innerHTML = "";
+    document.getElementById("selectionEmpty").style.display = "none";
+    document.getElementById("selectionCount").textContent = "";
+    document.getElementById("selectAllCheckbox").checked = true;
+    document.getElementById("selectAllCheckbox").indeterminate = false;
+    document.getElementById("selectionRangeActions").innerHTML = "";
+    document.getElementById("selectionRangeActions").style.display = "none";
+    document.getElementById("progress-card").style.display = "none";
+    if (currentComboSectionGroups.length) {
+      document.getElementById("section-card").style.display = "block";
+      return;
+    }
+    if (currentSections.length) {
+      document.getElementById("section-card").style.display = "block";
+      return;
+    }
+    currentSourceTitle = "";
+  }
+
+  function resetApp() {
+    currentJobId = null;
+    currentResults = [];
+    currentSourceUrl = "";
+    currentSourceTitle = "";
+    currentDiscoveredVideos = [];
+    currentSections = [];
+    currentComboUrls = [];
+    currentComboBaseVideos = [];
+    currentComboSectionGroups = [];
+    document.getElementById("urlInput").value = "";
+    document.getElementById("comboInput").value = "";
+    hideWorkflowCards();
+    updatePrimaryBtn();
+  }
+
+  function hideWorkflowCards() {
+    currentSourceTitle = "";
+    currentDiscoveredVideos = [];
+    currentSections = [];
+    currentComboBaseVideos = [];
+    currentComboSectionGroups = [];
+    document.getElementById("progress-card").style.display = "none";
+    document.getElementById("section-card").style.display = "none";
+    document.getElementById("selection-card").style.display = "none";
+    document.getElementById("results-card").style.display = "none";
+    document.getElementById("log").innerHTML = "";
+    document.getElementById("sectionGrid").innerHTML = "";
+    document.getElementById("sectionGrid").style.display = "grid";
+    document.getElementById("sectionGroupList").innerHTML = "";
+    document.getElementById("sectionGroupList").style.display = "none";
+    document.getElementById("sectionCount").textContent = "";
+    document.getElementById("sectionHint").textContent = "Pick which channel section to load first. After that, you can choose the individual videos.";
+    document.getElementById("loadSectionsBtn").style.display = "none";
+    document.getElementById("sectionContinueBtn").style.display = "none";
+    document.getElementById("selectionSearchInput").value = "";
+    document.getElementById("selectionSearchInput").placeholder = "Search titles or video IDs";
+    document.getElementById("videoPicker").innerHTML = "";
+    document.getElementById("selectionRangeActions").innerHTML = "";
+    document.getElementById("selectionRangeActions").style.display = "none";
+    document.getElementById("selectionEmpty").style.display = "none";
+    document.getElementById("transcriptList").innerHTML = "";
+    document.getElementById("selectionCount").textContent = "";
+    document.getElementById("progressCount").textContent = "";
+    document.getElementById("progressBar").style.width = "0%";
+    updateActionLabels();
+  }
+
+  function setMode(mode) {
+    if (!LABELS[mode]) return;
+    currentMode = mode;
+    document.querySelectorAll(".mode-btn").forEach(btn => {
+      btn.classList.toggle("active", btn.dataset.mode === mode);
+    });
+    document.getElementById("urlLabel").textContent = LABELS[currentMode];
+    document.getElementById("urlLabel").setAttribute("for", currentMode === "combo" ? "comboInput" : "urlInput");
+    document.getElementById("urlInput").placeholder = PLACEHOLDERS[currentMode] || PLACEHOLDERS.video;
+    document.getElementById("comboInput").placeholder = PLACEHOLDERS.combo;
+    document.getElementById("hint").textContent = HINTS[currentMode];
+    document.getElementById("singleInputRow").style.display = currentMode === "combo" ? "none" : "flex";
+    document.getElementById("comboInputRow").style.display = currentMode === "combo" ? "block" : "none";
+    document.getElementById("scopeRow").style.display = currentMode === "video" ? "none" : "flex";
+    updatePrimaryBtn();
+  }
+
+  function inferModeFromUrl(url) {
+    let parsed;
+    try {
+      parsed = new URL(url);
+    } catch (_) {
+      return currentMode;
+    }
+
+    const host = parsed.hostname.toLowerCase();
+    const path = parsed.pathname.toLowerCase();
+    const hasPlaylist = parsed.searchParams.has("list");
+    const hasVideo = parsed.searchParams.has("v");
+
+    if (!host.includes("youtube.com") && host !== "youtu.be" && host !== "www.youtu.be") {
+      return currentMode;
+    }
+    if (host === "youtu.be") return "video";
+    if (hasPlaylist && !hasVideo) return "playlist";
+    if (path.startsWith("/playlist")) return "playlist";
+    if (path.startsWith("/@") || path.startsWith("/channel/") || path.startsWith("/c/") || path.startsWith("/user/")) {
+      return "channel";
+    }
+    if (path.startsWith("/watch") || path.startsWith("/shorts/") || path.startsWith("/embed/") || path.startsWith("/live/")) {
+      return "video";
+    }
+    return currentMode;
+  }
+
+  function syncModeWithUrl() {
+    if (currentMode === "combo") return;
+    const url = document.getElementById("urlInput").value.trim();
+    const inferredMode = inferModeFromUrl(url);
+    if (inferredMode !== currentMode) setMode(inferredMode);
+  }
+
+  function resetRunUi() {
+    currentJobId = null;
+    currentResults = [];
+    document.getElementById("section-card").style.display = "none";
+    document.getElementById("selection-card").style.display = "none";
+    document.getElementById("selectionSearchInput").value = "";
+    document.getElementById("selectionEmpty").style.display = "none";
+    document.getElementById("results-card").style.display = "none";
+    document.getElementById("log").innerHTML = "";
+    document.getElementById("progressBar").style.width = "0%";
+    document.getElementById("progressCount").textContent = "";
+    document.getElementById("transcriptList").innerHTML = "";
+  }
+
+  function buildTranscriptText(result) {
+    const title = buildResultDisplayTitle(result);
+    const transcript = result?.transcript || "";
+    return `Title: ${title}\n\n${transcript}`;
+  }
+
+  function normalizedPublishedDate(result) {
+    return /^\d{4}-\d{2}-\d{2}$/.test(result?.release_date || "") ? result.release_date : "Unknown";
+  }
+
+  function filenamePublishedDate(result) {
+    return /^\d{4}-\d{2}-\d{2}$/.test(result?.release_date || "") ? result.release_date : "unknown-date";
+  }
+
+  function buildTranscriptDownloadName(result, extension) {
+    const normalizedExtension = String(extension || "").startsWith(".") ? extension : `.${extension}`;
+    const title = sanitizeFilename(result?.title || result?.video_id || "Untitled").replace(/\s+/g, "_");
+    return `${filenamePublishedDate(result)}_${title || "Untitled"}${normalizedExtension}`;
+  }
+
+  function escapeMarkdownInline(value) {
+    return String(value).replace(/([\\`*_{}[\]()#+.!|>~-])/g, "\\$1");
+  }
+
+  function buildTranscriptDocumentText(result) {
+    const title = buildResultDisplayTitle(result);
+    const transcript = result?.transcript || "";
+    const releaseDate = normalizedPublishedDate(result);
+    const videoId = result?.video_id || "";
+    const url = result?.url || (videoId ? `https://www.youtube.com/watch?v=${videoId}` : "");
+    const channel = result?.channel || result?.source_title || "Unknown";
+    const lines = [
+      "---",
+      `url: ${url}`,
+      `channel: ${String(channel).replace(/[\r\n]+/g, " ").trim() || "Unknown"}`,
+      `date_published: ${releaseDate}`,
+      "ingested: false",
+      "---",
+      "",
+      `# ${title}`,
+      "",
+      transcript,
+    ];
+    return `${lines.join("\n").trim()}\n`;
+  }
+
+  function buildTranscriptMarkdownText(result) {
+    const escapedTitle = escapeMarkdownInline(buildResultDisplayTitle(result));
+    return buildTranscriptDocumentText({
+      ...result,
+      title: escapedTitle,
+      sequence: null,
+    });
+  }
+
+  function buildResultDisplayTitle(result) {
+    const rawTitle = result?.title || result?.video_id || "Untitled";
+    const sequence = Number(result?.sequence);
+    if (Number.isInteger(sequence) && sequence > 0) {
+      return `${sequence}. ${rawTitle}`;
+    }
+    return rawTitle;
+  }
+
+  function copyTextToClipboard(text) {
+    if (navigator.clipboard?.writeText) {
+      return navigator.clipboard.writeText(text);
+    }
+
+    return new Promise((resolve, reject) => {
+      const area = document.createElement("textarea");
+      area.value = text;
+      area.setAttribute("readonly", "");
+      area.style.position = "fixed";
+      area.style.opacity = "0";
+      document.body.appendChild(area);
+      area.select();
+
+      try {
+        const ok = document.execCommand("copy");
+        document.body.removeChild(area);
+        if (!ok) throw new Error("Copy failed");
+        resolve();
+      } catch (error) {
+        document.body.removeChild(area);
+        reject(error);
+      }
+    });
+  }
+
+  function addLog(type, message) {
+    const log = document.getElementById("log");
+    const line = document.createElement("div");
+    line.className = "log-line";
+    line.innerHTML = `<span class="tag tag-${type}">${type.toUpperCase()}</span><span>${escHtml(message)}</span>`;
+    log.appendChild(line);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function setPrimaryBtn(loading) {
+    [document.getElementById("extractBtn"), document.getElementById("comboExtractBtn")]
+      .filter(Boolean)
+      .forEach(btn => {
+        btn.disabled = loading;
+        btn.innerHTML = loading ? `<span class="spinner"></span>` : getPrimaryBtnLabel();
+      });
+  }
+
+  function updatePrimaryBtn() {
+    updateActionLabels();
+    setPrimaryBtn(false);
+  }
+
+  function updateActionLabels() {
+    const selectedBtn = document.getElementById("transcribeSelectedBtn");
+    const outputLabel = currentOutputType === "transcript" ? "Transcribe Selected" : `Download Selected ${currentOutputType.toUpperCase()}`;
+    selectedBtn.textContent = outputLabel;
+    document.querySelector(".selection-note").textContent = currentOutputType === "transcript"
+      ? "Uncheck any videos you want to skip, then transcribe the selection."
+      : `Uncheck any videos you want to skip, then prepare the ${currentOutputType.toUpperCase()} download.`;
+  }
+
+  function getPrimaryBtnLabel() {
+    if (currentMode !== "video") return "Find Videos";
+    return currentOutputType === "transcript" ? "Extract" : `Download ${currentOutputType.toUpperCase()}`;
+  }
+
+  function sanitizeFilename(value) {
+    return String(value)
+      .replace(/[<>:"/\\|?*\u0000-\u001F]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 100) || "transcript";
+  }
+
+  function getDiscoveryLimit() {
+    const raw = document.getElementById("scopeSelect").value;
+    return raw === "all" ? null : Number(raw);
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  }
+
+  setOutputType("transcript");
+  setMode("video");
+  updateConverterTargets();
+  refreshProxyIp();
+</script>
+</body>
+</html>
