@@ -1,61 +1,121 @@
-# Drum Replacement Coursework
+<p align="center">
+  <img src="static/favicon.svg" alt="YouTube Transcript Extractor reverse play button logo" width="96">
+</p>
 
-This folder contains the report, notebooks and Python files for my drum replacement system.
+# YouTube Transcript Extractor
 
-## Start here
+A local Flask tool for extracting YouTube transcripts and exporting them into useful formats. The goal is to support research, content review, media planning, and faster creative workflow.
 
-Open the report:
+This project is intended for personal or authorised use. Users should follow YouTube's terms and only download or process content they have the right to use.
+
+## Features
+
+- Extract transcripts from YouTube videos.
+- Process single videos, playlists, and supported YouTube URLs.
+- Export transcript results as Markdown, text, CSV, or ZIP files.
+- Download MP3 or MP4 outputs when the user has permission to do so.
+- Convert supported local audio and document files.
+- Run locally in the browser with a simple Flask interface.
+
+## Tech Stack
+
+![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![Flask](https://img.shields.io/badge/Flask-000000?style=for-the-badge&logo=flask&logoColor=white)
+![yt-dlp](https://img.shields.io/badge/yt--dlp-111827?style=for-the-badge)
+![HTML](https://img.shields.io/badge/HTML-E34F26?style=for-the-badge&logo=html5&logoColor=white)
+![CSS](https://img.shields.io/badge/CSS-1572B6?style=for-the-badge&logo=css3&logoColor=white)
+
+## Project Files
 
 ```text
-Drum_Replacement_using_U_Net_Separation_and_AST_Classification.pdf
+app.py                    Main Flask application
+proxy_gateway.py          Optional local proxy helper
+requirements.txt          Python dependencies
+package.json              Convenience npm scripts
+templates/index.html      Browser UI
+static/favicon.svg        App icon
+scripts/                  Optional macOS launcher scripts
 ```
 
-Then open the notebooks in this order:
+## Requirements
 
-```text
-1.Train_Separator.ipynb
-2.Demo_Remix.ipynb
-3.Eval_Metrics.ipynb
+- Python 3.11 or newer
+- `pip`
+- `ffmpeg` for audio/video conversion and MP3/MP4 export
+
+On macOS, `ffmpeg` can be installed with Homebrew:
+
+```bash
+brew install ffmpeg
 ```
 
-## Install packages
+## Install
 
-If anything is missing, run:
+Clone the repository:
+
+```bash
+git clone https://github.com/RabinBhattaCode/YouTube-Transcript-Extractor.git
+cd YouTube-Transcript-Extractor
+```
+
+Create a virtual environment:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
+
+Install the Python packages:
 
 ```bash
 pip install -r requirements.txt
 ```
 
-## Main files
+## Run
 
-The notebooks import the Python code from `MAIN/src`.
+Start the local Flask app:
 
-```text
-MAIN/src/separator.py        U-Net drum separator
-MAIN/src/ast_classifier.py   AST loop choice
-MAIN/src/remix_demo.py       final remix demo
-MAIN/src/ast_eval.py         AST evaluation helper
-MAIN/src/config.py           paths and settings
+```bash
+python3 app.py
 ```
 
-The trained checkpoint is:
+Open this address in a browser:
 
 ```text
-MAIN/checkpoints/unet_separator_stft_midfocus.pt
+http://127.0.0.1:5050
 ```
 
-## Data
+You can also change the port:
 
-The full MUSDB data is not included because it is too large. The 7-second MUSDB sample can be downloaded using the official `musdb` package.
+```bash
+PORT=5051 python3 app.py
+```
 
-Official musdb GitHub:
-https://github.com/sigsep/sigsep-mus-db
+## Optional macOS Launcher
 
-The downloaded 7-second sample should be placed here:
+The `scripts/` folder includes simple macOS helper scripts.
 
-Data/MUSDB18_7s_sample/
+Start the app and open the browser:
 
-Input audio and drum loops should be placed here:
+```bash
+zsh scripts/open-extractor.command
+```
 
-Data/InputAudio/
-Data/DrumLoops/
+Check server status:
+
+```bash
+zsh scripts/launcher-control.command status
+```
+
+Stop the server:
+
+```bash
+zsh scripts/launcher-control.command stop
+```
+
+## Notes
+
+The repository does not include local cache files, Python bytecode, built app bundles, or laptop setup archives. These files are generated locally and are not needed for users to run the source code.
+
+If transcript extraction fails for a video, the likely reason is that the video has no available transcript, the transcript language is unsupported, or YouTube has limited access for that request.
+
